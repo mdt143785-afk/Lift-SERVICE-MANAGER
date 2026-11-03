@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#eaf6ff">
+<title>Daily Servicing Data</title>
+<style>
+:root{
+  --blue:#168bd2;--blue-dark:#0874b7;--blue-soft:#eaf6ff;
+  --line:#cfe6f6;--ink:#17324a;--muted:#66839a;--white:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#eaf6ff 0%,#f7fbff 55%,#edf7ff 100%);
+  color:var(--ink);font-family:Arial,Helvetica,sans-serif;padding:18px}
+.wrap{max-width:1200px;margin:0 auto}
+header{background:linear-gradient(120deg,#087fc4,#43b4ee);color:white;padding:24px 22px;border-radius:20px;
+  box-shadow:0 10px 26px #087fc42b;margin-bottom:18px}
+header h1{margin:0 0 7px;font-size:clamp(23px,4vw,32px);letter-spacing:.2px}
+header p{margin:0;color:#e9f7ff;font-size:14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;
+  box-shadow:0 8px 24px #1d75a00d}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.hint{font-size:13px;color:var(--muted);line-height:1.5}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+button{border:0;border-radius:12px;padding:12px 17px;font-weight:700;font-size:14px;cursor:pointer;
+  transition:transform .15s,box-shadow .15s}
+button:active{transform:scale(.97)}
+.save{color:#fff;background:linear-gradient(135deg,#087fc4,#25a9e8);box-shadow:0 5px 13px #168bd238}
+.pdf{color:#0874b7;background:#e8f5ff;border:1px solid #b9def5}
+.clear{color:#a33b3b;background:#fff1f1;border:1px solid #f2cccc}
+.status{font-size:12px;color:#16824c;min-height:18px;margin:0 0 8px 2px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:850px;background:white}
+th{background:#dff1ff;color:#075b91;font-size:13px;text-align:center;padding:14px 10px;border-bottom:2px solid #b9def5;white-space:nowrap}
+td{padding:7px;border-bottom:1px solid #e4f0f8;border-right:1px solid #edf4f9}
+td:last-child,th:last-child{border-right:0}
+tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#f8fcff}
+.num{width:48px;text-align:center;color:#7390a5;font-weight:700;font-size:13px}
+input.cell{width:100%;min-width:120px;padding:12px 11px;border:1px solid #d6e8f4;border-radius:9px;
+  background:#fff;color:#18364d;font-size:14px;outline:none}
+input.cell:focus{border-color:#35a6e7;box-shadow:0 0 0 3px #35a6e71c;background:#fbfeff}
+footer{text-align:center;color:#7390a5;font-size:12px;padding:16px}
+@media(max-width:600px){body{padding:10px}header{padding:20px 16px;border-radius:16px}.panel{padding:10px}.toolbar{align-items:flex-start}.actions{width:100%}.actions button{flex:1}}
+@page{size:A4 landscape;margin:9mm}
+@media print{
+  body{padding:0;background:#fff}
+  header{background:#fff!important;color:#000!important;box-shadow:none;border:1px solid #999;padding:10px 14px;margin-bottom:8px}
+  header p{color:#333}
+  .panel{border:0;box-shadow:none;padding:0}
+  .toolbar,.status,footer{display:none!important}
+  .table-wrap{overflow:visible;border:1px solid #888}
+  table{min-width:0;width:100%;table-layout:fixed}
+  th{background:#e8f4fb!important;color:#000!important;padding:6px 3px;font-size:9px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  td{padding:3px 2px}
+  input.cell{min-width:0;padding:4px 3px;border:0;border-radius:0;font-size:9px;color:#000;background:transparent}
+  .num{font-size:9px}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Daily Servicing Data</h1>
+    <p>Daily Staff &amp; Project Record</p>
+  </header>
+  <section class="panel">
+    <div class="toolbar">
+      <div class="hint">Enter your information manually. Your entries are saved automatically on this device.</div>
+      <div class="actions">
+        <button class="save" type="button" onclick="saveData()">✓ Save Data</button>
+        <button class="pdf" type="button" onclick="downloadPDF()">⬇ Download A4 PDF</button>
+        <button class="clear" type="button" onclick="clearData()">Clear All</button>
+      </div>
+    </div>
+    <div class="status" id="status" aria-live="polite">Ready — 45 rows available</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:48px">No.</th>
+          <th>Staff ID</th>
+          <th>Team Leader</th>
+          <th>OIL &amp; MOBIL</th>
+          <th>Lift Counts</th>
+          <th>Project Name</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+  <footer>Daily Servicing Data</footer>
+</div>
+<script>
+const fields=['staff','leader','oil','lift','project'];
+const tbody=document.getElementById('rows');
+const storageKey='dailyServicingData_v2';
+for(let i=0;i<45;i++){
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td class="num">'+(i+1)+'</td>'+fields.map(f=>'<td><input class="cell" type="text" data-row="'+i+'" data-field="'+f+'" aria-label="'+f+' row '+(i+1)+'"></td>').join('');
+  tbody.appendChild(tr);
+}
+function saveData(){
+  const data={};
+  document.querySelectorAll('input.cell').forEach(input=>{
+    const key=input.dataset.row;
+    if(!data[key]) data[key]={};
+    data[key][input.dataset.field]=input.value;
+  });
+  try{
+    localStorage.setItem(storageKey,JSON.stringify(data));
+    document.getElementById('status').textContent='✓ Saved successfully on this device';
+  }catch(e){
+    document.getElementById('status').textContent='Could not save. Please allow browser storage.';
+  }
+}
+function loadData(){
+  try{
+    const data=JSON.parse(localStorage.getItem(storageKey)||'{}');
+    document.querySelectorAll('input.cell').forEach(input=>{
+      input.value=data[input.dataset.row]?.[input.dataset.field]||'';
+    });
+  }catch(e){}
+}
+let saveTimer;
+document.addEventListener('input',e=>{
+  if(e.target.matches('input.cell')){
+    document.getElementById('status').textContent='Saving…';
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(saveData,500);
+  }
+});
+function downloadPDF(){saveData();window.print();}
+function clearData(){
+  if(!confirm('Are you sure you want to clear all 45 rows?')) return;
+  document.querySelectorAll('input.cell').forEach(input=>input.value='');
+  saveData();
+  document.getElementById('status').textContent='All rows cleared';
+}
+loadData();
+</script>
+</body>
+</html>
