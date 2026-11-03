@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lift Service Manager</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#eef3fb;color:#25344d}
+header{background:linear-gradient(120deg,#102b59,#1762a8,#347fc2);color:white;padding:25px 20px}
+header h1{margin:0;font-size:27px}
+header p{margin:8px 0 0;color:#dcecff}
+.container{max-width:1250px;margin:25px auto;padding:0 15px}
+.card{background:white;border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 5px 20px #173b6812;border:1px solid #e0e9f5}
+h2{margin-top:0;color:#17477f;font-size:21px}
+.topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input,button{font-size:14px;padding:11px;border-radius:8px}
+input{border:1px solid #ccd9e9;background:#fbfdff}
+input:focus{outline:2px solid #a8caff;border-color:#2776c9}
+button{border:0;color:white;cursor:pointer;font-weight:bold;transition:.2s}
+button:hover{filter:brightness(.93)}
+.primary{background:#1762b5}
+.save{background:linear-gradient(120deg,#087b59,#16a477)}
+.pdf{background:linear-gradient(120deg,#6441a5,#8965c8)}
+.history{background:#eaf2ff;color:#17477f;border:1px solid #cbdcf5}
+.danger{background:#bd3c48}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:750px}
+th{background:#e4efff;color:#17477f;font-weight:bold}
+th,td{padding:10px;border:1px solid #dce5f0;text-align:left}
+td input{width:100%;min-width:100px}
+tbody tr:nth-child(even){background:#f8faff}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.status{color:#087b59;font-weight:bold;margin-bottom:0}
+.history-list{margin-top:15px}
+.history-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #e4eaf3;flex-wrap:wrap}
+.history-item button{padding:8px 12px}
+.small{font-size:13px;color:#64748b}
+@media(max-width:600px){
+header h1{font-size:22px}
+.container{padding:0 9px}
+.card{padding:13px}
+h2{font-size:18px}
+}
+@media print{
+body{background:white}
+header{background:white;color:#123d78;padding:10px}
+header p{color:#333}
+.card{box-shadow:none;border:0;padding:5px}
+.no-print{display:none!important}
+table{min-width:0;font-size:10px}
+th,td{padding:5px}
+td input{border:0;padding:2px;background:white;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Lift Service Manager</h1>
+<p>Lift Servicing Management System</p>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h2>Daily Service Report</h2>
+<div class="topbar">
+<label for="reportDate">তারিখ:</label>
+<input type="date" id="reportDate">
+<button class="primary" onclick="loadReport()">রিপোর্ট দেখুন</button>
+<button class="history" onclick="showHistory()">Report History</button>
+</div>
+</div>
+
+<div class="card">
+<h2>Team Leader Information</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Staff ID</th>
+<th>Team Leader Name</th>
+<th>Oil & Mobil</th>
+<th>Lift Count</th>
+<th>Project Name</th>
+</tr>
+</thead>
+<tbody id="teamTable"></tbody>
+</table>
+</div>
+<br>
+<div class="actions no-print">
+<button class="save" onclick="saveReport()">Save Daily Report</button>
+<button class="pdf" onclick="savePDF()">Save PDF</button>
+</div>
+<p class="status" id="status"></p>
+</div>
+
+<div class="card no-print" id="historyCard" style="display:none">
+<h2>Report History</h2>
+<div id="historyList" class="history-list"></div>
+</div>
+
+</div>
+
+<script>
+const table=document.getElementById("teamTable");
+const dateInput=document.getElementById("reportDate");
+
+function today(){
+const d=new Date();
+return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+dateInput.value=today();
+
+function getNames(){
+return JSON.parse(localStorage.getItem("leaderNames")||"{}");
+}
+
+function createRows(){
+const names=getNames();
+for(let i=1;i<=45;i++){
+const id="ST-"+String(i).padStart(3,"0");
+const row=document.createElement("tr");
+row.innerHTML=`
+<td>${id}</td>
+<td><input type="text" class="leader" data-id="${id}" placeholder="Team Leader Name"></td>
+<td><input type="text" placeholder="Oil & Mobil"></td>
+<td><input type="number" min="0" placeholder="Lift Count"></td>
+<td><input type="text" placeholder="Project Name"></td>`;
+table.appendChild(row);
+row.querySelector(".leader").value=names[id]||"";
+}
+}
+
+function saveNames(){
+const names=getNames();
+document.querySelectorAll(".leader").forEach(input=>{
+if(input.value.trim()) names[input.dataset.id]=input.value.trim();
+});
+localStorage.setItem("leaderNames",JSON.stringify(names));
+}
+
+function getReports(){
+return JSON.parse(localStorage.getItem("liftReports")||"{}");
+}
+
+function saveReport(){
+saveNames();
+const data=[];
+document.querySelectorAll("#teamTable tr").forEach(row=>{
+data.push([...row.querySelectorAll("input")].map(input=>input.value));
+});
+const reports=getReports();
+reports[dateInput.value]=data;
+localStorage.setItem("liftReports",JSON.stringify(reports));
+document.getElementById("status").textContent="রিপোর্ট সফলভাবে সেভ হয়েছে!";
+}
+
+function loadReport(){
+const reports=getReports();
+const data=reports[dateInput.value];
+if(!data){
+alert("এই তারিখে কোনো রিপোর্ট পাওয়া যায়নি।");
+return;
+}
+document.querySelectorAll("#teamTable tr").forEach((row,i)=>{
+row.querySelectorAll("input").forEach((input,j)=>{
+input.value=data[i]?.[j]||"";
+});
+});
+saveNames();
+document.getElementById("status").textContent="রিপোর্ট লোড হয়েছে!";
+}
+
+function showHistory(){
+const card=document.getElementById("historyCard");
+const list=document.getElementById("historyList");
+const reports=getReports();
+const dates=Object.keys(reports).sort().reverse();
+card.style.display="block";
+list.innerHTML="";
+if(!dates.length){
+list.textContent="এখনো কোনো রিপোর্ট সেভ করা হয়নি।";
+return;
+}
+dates.forEach(date=>{
+const item=document.createElement("div");
+item.className="history-item";
+const label=document.createElement("strong");
+label.textContent=date;
+const button=document.createElement("button");
+button.className="primary";
+button.textContent="রিপোর্ট খুলুন";
+button.onclick=()=>{
+dateInput.value=date;
+loadReport();
+card.scrollIntoView({behavior:"smooth"});
+};
+item.append(label,button);
+list.appendChild(item);
+});
+}
+
+function savePDF(){
+saveNames();
+window.print();
+}
+
+createRows();
+</script>
+
+</body>
+</html>
